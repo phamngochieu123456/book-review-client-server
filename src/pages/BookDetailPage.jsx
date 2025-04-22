@@ -1,4 +1,4 @@
-// src/pages/BookDetailPage.jsx
+// src/pages/BookDetailPage.jsx (Updated version)
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { 
@@ -17,26 +17,33 @@ import {
   Avatar,
   Stack,
   useTheme,
-  Alert
+  Alert,
+  Tabs,
+  Tab
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CategoryIcon from '@mui/icons-material/Category';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import BookIcon from '@mui/icons-material/Book';
+import RateReviewIcon from '@mui/icons-material/RateReview';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import { bookApi } from '../api/bookApi';
-import { useAuth } from '../context/AuthContext'; // Assume we have an auth context
+import { useAuth } from '../context/AuthContext';
+import ReviewList from '../components/review/ReviewList';
+import CommentList from '../components/comment/CommentList';
 
 const BookDetailPage = () => {
   const { id } = useParams();
   const theme = useTheme();
-  const { user } = useAuth(); // Get authenticated user
+  const { user } = useAuth();
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
 
   // Admin status - in a real app, would come from auth context
-  const isAdmin = user && user.role === 'ADMIN';
+  const isAdmin = user && user.isAdmin;
 
   useEffect(() => {
     const fetchBookDetails = async () => {
@@ -54,6 +61,11 @@ const BookDetailPage = () => {
 
     fetchBookDetails();
   }, [id]);
+  
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   // Placeholder image if no cover is available
   const coverImage = book?.coverImageUrl || 'https://via.placeholder.com/300x450?text=No+Cover+Available';
@@ -306,6 +318,51 @@ const BookDetailPage = () => {
           )}
         </Grid>
       </Grid>
+      
+      {/* Reviews and Comments Tabs */}
+      <Box sx={{ mt: 6, mb: 4 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={handleTabChange}
+          indicatorColor="primary"
+          textColor="primary"
+          variant="fullWidth"
+          sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab 
+            icon={<RateReviewIcon />} 
+            label="Reviews" 
+            id="tab-0"
+            aria-controls="tabpanel-0"
+          />
+          <Tab 
+            icon={<ChatBubbleOutlineIcon />} 
+            label="Comments" 
+            id="tab-1"
+            aria-controls="tabpanel-1"
+          />
+        </Tabs>
+        
+        {/* Reviews Panel */}
+        <div
+          role="tabpanel"
+          hidden={activeTab !== 0}
+          id="tabpanel-0"
+          aria-labelledby="tab-0"
+        >
+          {activeTab === 0 && <ReviewList bookId={book.id} />}
+        </div>
+        
+        {/* Comments Panel */}
+        <div
+          role="tabpanel"
+          hidden={activeTab !== 1}
+          id="tabpanel-1"
+          aria-labelledby="tab-1"
+        >
+          {activeTab === 1 && <CommentList bookId={book.id} />}
+        </div>
+      </Box>
 
       {/* Back button */}
       <Box sx={{ mt: 5, mb: 2 }}>
