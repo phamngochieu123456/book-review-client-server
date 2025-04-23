@@ -87,11 +87,11 @@ export const bookApi = {
     }
   },
 
-  // Get books by author ID
+  // Get books by author ID (using the new RESTful endpoint)
   getBooksByAuthor: async (authorId, page = 0, size = 12, sortBy = 'publicationYear', sortDir = 'desc') => {
     try {
-      const params = { page, size, sortBy, sortDir, authorId };
-      const response = await apiClient.get('/books', { params });
+      const params = { page, size, sortBy, sortDir };
+      const response = await apiClient.get(`/authors/${authorId}/books`, { params });
       return response.data;
     } catch (error) {
       console.error(`Error fetching books for author ID ${authorId}:`, error);

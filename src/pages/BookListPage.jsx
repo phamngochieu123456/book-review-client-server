@@ -96,15 +96,29 @@ const BookListPage = () => {
           searchTerm 
         } = filters;
         
-        const response = await bookApi.getAllBooks(
-          page, 
-          size, 
-          sortBy, 
-          sortDir, 
-          categoryId || null, 
-          authorId || null, 
-          searchTerm || null
-        );
+        let response;
+        
+        // Use the dedicated author books endpoint if filtering by author
+        if (authorId) {
+          response = await bookApi.getBooksByAuthor(
+            authorId,
+            page,
+            size,
+            sortBy,
+            sortDir
+          );
+        } else {
+          // Otherwise use the general books endpoint with optional filters
+          response = await bookApi.getAllBooks(
+            page, 
+            size, 
+            sortBy, 
+            sortDir, 
+            categoryId || null, 
+            null, // Don't pass authorId here as we're using the dedicated endpoint
+            searchTerm || null
+          );
+        }
         
         setBooks(response.content || []);
         setPageCount(response.totalPages || 0);

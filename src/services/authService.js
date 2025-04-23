@@ -8,23 +8,23 @@ const OAUTH_URL = 'http://localhost:8081/oauth2'; // OAuth2 endpoints
 const CLIENT_ID = 'client_admin';
 const CLIENT_SECRET = 'admin';
 
-// Lưu token vào localStorage
+// Save tokens to localStorage
 const setTokens = (tokens) => {
   localStorage.setItem('accessToken', tokens.access_token);
   localStorage.setItem('refreshToken', tokens.refresh_token);
   
-  // Lưu thời gian hết hạn 
-  const expiresIn = tokens.expires_in || 3600; // Mặc định 1 giờ
+  // Save expiration time
+  const expiresIn = tokens.expires_in || 3600; // Default 1 hour
   const expiresAt = new Date().getTime() + expiresIn * 1000;
   localStorage.setItem('expiresAt', expiresAt.toString());
 };
 
-// Lấy access token từ localStorage
+// Get access token from localStorage
 export const getAccessToken = () => {
   return localStorage.getItem('accessToken');
 };
 
-// Kiểm tra token đã hết hạn chưa
+// Check if token is expired
 export const isTokenExpired = () => {
   const expiresAt = localStorage.getItem('expiresAt');
   if (!expiresAt) return true;
@@ -32,12 +32,12 @@ export const isTokenExpired = () => {
   return new Date().getTime() > parseInt(expiresAt);
 };
 
-// Lấy refresh token từ localStorage
+// Get refresh token from localStorage
 const getRefreshToken = () => {
   return localStorage.getItem('refreshToken');
 };
 
-// Xóa tokens khỏi localStorage khi đăng xuất
+// Remove tokens from localStorage on logout
 const removeTokens = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
@@ -45,7 +45,7 @@ const removeTokens = () => {
   localStorage.removeItem('codeVerifier');
 };
 
-// Đăng ký người dùng mới
+// Register new user
 const register = async (username, email, password, passwordConfirmation) => {
   try {
     const response = await axios.post(`${AUTH_API_URL}/register`, {
@@ -60,14 +60,14 @@ const register = async (username, email, password, passwordConfirmation) => {
   }
 };
 
-// Tạo code verifier cho PKCE
+// Create code verifier for PKCE
 const generateCodeVerifier = () => {
   const array = new Uint8Array(32);
   window.crypto.getRandomValues(array);
   return Array.from(array, (byte) => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
 };
 
-// Tạo code challenge từ code verifier
+// Create code challenge from code verifier
 const generateCodeChallenge = async (verifier) => {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
@@ -79,39 +79,39 @@ const generateCodeChallenge = async (verifier) => {
     .replace(/=+$/, '');
 };
 
-// Tạo Basic Authentication header
+// Create Basic Authentication header
 const createBasicAuthHeader = () => {
-  // Encode client_id:client_secret theo chuẩn Base64
+  // Encode client_id:client_secret in Base64 format
   const credentials = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
   return `Basic ${credentials}`;
 };
 
-// Bắt đầu quá trình đăng nhập OAuth2 với PKCE
+// Initiate OAuth2 login process with PKCE
 const initiateLogin = async () => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   
-  // Lưu code verifier để sử dụng sau
+  // Save code verifier for later use
   localStorage.setItem('codeVerifier', codeVerifier);
   
-  // Cấu hình OAuth2 
+  // OAuth2 configuration
   const redirectUri = 'http://localhost:3000/oauth/callback';
   const scope = 'openid'; 
   
-  // Chuyển hướng đến trang đăng nhập của Auth Server
+  // Redirect to Auth Server login page
   window.location.href = `${OAUTH_URL}/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 };
 
-// Cần thêm xử lý lỗi rõ ràng để tránh lỗi lặp lại
+// Add clear error handling to avoid repeating errors
 const handleLoginCallback = async (code, retries = 1) => {
   try {
-    // Lấy code verifier đã lưu trước đó
+    // Get previously saved code verifier
     const codeVerifier = localStorage.getItem('codeVerifier');
     if (!codeVerifier) {
       throw new Error('Code verifier not found');
     }
     
-    // Trao đổi authorization code lấy tokens
+    // Exchange authorization code for tokens
     const tokenData = new URLSearchParams();
     tokenData.append('redirect_uri', 'http://localhost:3000/oauth/callback');
     tokenData.append('grant_type', 'authorization_code');
@@ -119,7 +119,7 @@ const handleLoginCallback = async (code, retries = 1) => {
     tokenData.append('code_verifier', codeVerifier);
     
     try {
-      // Sử dụng Basic Authentication thay vì gửi client_id trong body
+      // Use Basic Authentication instead of sending client_id in body
       const response = await axios.post(`${OAUTH_URL}/token`, tokenData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -127,23 +127,23 @@ const handleLoginCallback = async (code, retries = 1) => {
         }
       });
       
-      // Lưu tokens
+      // Save tokens
       setTokens(response.data);
       
-      // Xóa code verifier không cần thiết nữa
+      // Remove code verifier as it's no longer needed
       localStorage.removeItem('codeVerifier');
       
       return response.data;
     } catch (error) {
       console.error('Token exchange error:', error);
       
-      // Thêm xử lý lỗi cụ thể
+      // Add specific error handling
       if (error.response) {
-        // Nếu server trả về lỗi
+        // If server returns an error
         const statusCode = error.response.status;
         const errorData = error.response.data;
         
-        // Xóa code verifier để tránh lặp lại lỗi
+        // Remove code verifier to prevent error repetition
         localStorage.removeItem('codeVerifier');
         
         throw {
@@ -152,17 +152,17 @@ const handleLoginCallback = async (code, retries = 1) => {
           error_description: errorData.error_description || 'An error occurred during token exchange'
         };
       } else if (error.request) {
-        // Nếu yêu cầu được gửi nhưng không nhận được phản hồi
+        // If request was sent but no response received
         localStorage.removeItem('codeVerifier');
         throw { error: 'No response from server' };
       } else {
-        // Lỗi cấu hình request
+        // Request configuration error
         localStorage.removeItem('codeVerifier');
         throw { error: error.message || 'Error setting up request' };
       }
     }
   } catch (error) {
-    // Đảm bảo xóa code verifier trong mọi trường hợp lỗi
+    // Ensure code verifier is removed in all error cases
     localStorage.removeItem('codeVerifier');
 
     if (retries > 0 && error.status === 500) {
@@ -175,7 +175,7 @@ const handleLoginCallback = async (code, retries = 1) => {
   }
 };
 
-// Làm mới access token bằng refresh token
+// Refresh access token using refresh token
 const refreshAccessToken = async () => {
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
@@ -197,38 +197,38 @@ const refreshAccessToken = async () => {
     setTokens(response.data);
     return response.data.access_token;
   } catch (error) {
-    // Nếu refresh token không hợp lệ, đăng xuất người dùng
+    // If refresh token is invalid, log out the user
     logout();
     throw new Error('Session expired. Please login again.');
   }
 };
 
-// Đăng xuất
+// Logout
 const logout = () => {
-  // Luôn xóa token khỏi localStorage trước
+  // Always remove tokens from localStorage first
   removeTokens();
   
-  // Tạo URL logout với redirect_uri quay về trang chủ
+  // Create logout URL with redirect_uri back to home page
   const homeUrl = 'http://localhost:3000/';
   const logoutUrl = `${AUTH_URL}/logout`;
   
-  // Chuyển hướng đến trang logout của auth server
+  // Redirect to auth server logout page
   window.location.href = logoutUrl;
 };
 
-// Tạo axios instance với interceptor xử lý token
+// Create axios instance with interceptor for token handling
 const createAuthenticatedAxios = () => {
   const instance = axios.create();
   
   instance.interceptors.request.use(async (config) => {
     let token = getAccessToken();
     
-    // Nếu token hết hạn, làm mới nó
+    // If token is expired, refresh it
     if (token && isTokenExpired()) {
       try {
         token = await refreshAccessToken();
       } catch (error) {
-        // Nếu không thể làm mới, ném lỗi để xử lý bên ngoài
+        // If refresh fails, throw error to be handled outside
         throw error;
       }
     }
@@ -243,10 +243,10 @@ const createAuthenticatedAxios = () => {
   return instance;
 };
 
-// API instance đã được xác thực
+// Authenticated API instance
 const authAxios = createAuthenticatedAxios();
 
-// Lấy thông tin hồ sơ người dùng
+// Get user profile
 const getUserProfile = async () => {
   try {
     const response = await authAxios.get(`${AUTH_API_URL}/users/me`);
@@ -256,7 +256,7 @@ const getUserProfile = async () => {
   }
 };
 
-// Cập nhật thông tin hồ sơ người dùng
+// Update user profile
 const updateUserProfile = async (profileData) => {
   try {
     const response = await authAxios.put(`${AUTH_API_URL}/users/me`, profileData);
@@ -266,7 +266,7 @@ const updateUserProfile = async (profileData) => {
   }
 };
 
-// Đổi mật khẩu
+// Change password
 const changePassword = async (currentPassword, newPassword, passwordConfirmation) => {
   try {
     const response = await authAxios.post(`${AUTH_API_URL}/users/me/change-password`, {
@@ -280,7 +280,7 @@ const changePassword = async (currentPassword, newPassword, passwordConfirmation
   }
 };
 
-// Kiểm tra người dùng đã đăng nhập chưa
+// Check if user is authenticated
 const isAuthenticated = () => {
   const token = getAccessToken();
   return !!token && !isTokenExpired();

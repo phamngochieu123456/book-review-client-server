@@ -23,10 +23,10 @@ export const AuthProvider = ({ children }) => {
         if (authService.isAuthenticated()) {
           const accessToken = authService.getAccessToken();
           
-          // Giải mã token để lấy thông tin user
+          // Decode token to get user information
           const decodedToken = jwtDecode(accessToken);
           
-          // Lấy thông tin user từ token
+          // Extract user information from token
           const userData = {
             id: decodedToken.user_id,
             username: decodedToken.sub,
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
     checkLoggedIn();
   }, []);
 
-  // Login function - khởi tạo luồng OAuth2
+  // Login function - initiates OAuth2 flow
   const login = async () => {
     setLoading(true);
     setError(null);
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Handle OAuth callback - sử dụng useCallback để tránh tạo lại hàm mỗi lần render
+  // Handle OAuth callback - using useCallback to avoid recreating this function on each render
   const handleOAuthCallback = useCallback(async (code) => {
     setLoading(true);
     setError(null);
@@ -77,10 +77,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const tokens = await authService.handleLoginCallback(code);
       
-      // Giải mã token để lấy thông tin user
+      // Decode token to get user information
       const decodedToken = jwtDecode(tokens.access_token);
       
-      // Lấy thông tin user từ token
+      // Extract user information from token
       const userData = {
         id: decodedToken.user_id,
         username: decodedToken.sub,
@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return false;
     }
-  }, []); // Không có dependencies vì không phụ thuộc vào state hoặc props khác
+  }, []); // No dependencies because it doesn't depend on any state or props
 
   // Logout function
   const logout = () => {

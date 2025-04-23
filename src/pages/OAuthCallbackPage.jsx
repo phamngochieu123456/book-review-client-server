@@ -18,12 +18,12 @@ const OAuthCallbackPage = () => {
   const processedRef = useRef(false);
 
   useEffect(() => {
-    // Sử dụng ref để đảm bảo callback chỉ được xử lý một lần
+    // Use ref to ensure callback is processed only once
     if (processedRef.current) return;
     
     const processCallback = async () => {
       try {
-        // Đánh dấu đã xử lý để ngăn chặn xử lý nhiều lần
+        // Mark as processed to prevent multiple processing
         processedRef.current = true;
         
         // Extract authorization code from URL search params
@@ -54,23 +54,23 @@ const OAuthCallbackPage = () => {
 
     processCallback();
     
-    // Callback không nên phụ thuộc vào location vì location không thay đổi sau khi mount
+    // Callback shouldn't depend on location since location doesn't change after mounting
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleOAuthCallback, navigate]);
 
-  // Chuyển hướng về trang login sau khi hiển thị lỗi
+  // Redirect to login page after displaying error
   const handleBackToLogin = () => {
     navigate('/login', { replace: true });
   };
 
-  // Trong OAuthCallbackPage.jsx
+  // Add timeout to prevent page hanging for too long
   useEffect(() => {
-    // Thêm timeout để tránh treo trang quá lâu
+    // Add timeout to avoid page hanging for too long
     const timeoutId = setTimeout(() => {
       if (!processedRef.current) {
         setError('Authentication request timed out. Please try again.');
       }
-    }, 30000); // 30 giây
+    }, 30000); // 30 seconds
 
     // Cleanup timeout
     return () => clearTimeout(timeoutId);
