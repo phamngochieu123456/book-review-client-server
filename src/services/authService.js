@@ -8,12 +8,17 @@ const OAUTH_URL = 'http://localhost:8081/oauth2'; // OAuth2 endpoints
 const CLIENT_ID = 'client_admin';
 const CLIENT_SECRET = 'admin';
 
-// Save tokens to localStorage
+// Flag to track if a token refresh is in progress
+let isRefreshingToken = false;
+// Array to store pending requests that are waiting for token refresh
+let pendingRequests = [];
+
+// Store tokens in localStorage
 const setTokens = (tokens) => {
   localStorage.setItem('accessToken', tokens.access_token);
   localStorage.setItem('refreshToken', tokens.refresh_token);
   
-  // Save expiration time
+  // Calculate and save expiration time
   const expiresIn = tokens.expires_in || 3600; // Default 1 hour
   const expiresAt = new Date().getTime() + expiresIn * 1000;
   localStorage.setItem('expiresAt', expiresAt.toString());
@@ -29,7 +34,9 @@ export const isTokenExpired = () => {
   const expiresAt = localStorage.getItem('expiresAt');
   if (!expiresAt) return true;
   
-  return new Date().getTime() > parseInt(expiresAt);
+  // Add a buffer of 30 seconds to ensure we refresh slightly before actual expiration
+  const bufferTime = 30 * 1000; // 30 seconds in milliseconds
+  return new Date().getTime() > (parseInt(expiresAt) - bufferTime);
 };
 
 // Get refresh token from localStorage
@@ -81,12 +88,12 @@ const generateCodeChallenge = async (verifier) => {
 
 // Create Basic Authentication header
 const createBasicAuthHeader = () => {
-  // Encode client_id:client_secret in Base64 format
+  // Encode client_id:client_secret using Base64
   const credentials = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
   return `Basic ${credentials}`;
 };
 
-// Initiate OAuth2 login process with PKCE
+// Initiate OAuth2 login with PKCE
 const initiateLogin = async () => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -102,7 +109,7 @@ const initiateLogin = async () => {
   window.location.href = `${OAUTH_URL}/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
 };
 
-// Add clear error handling to avoid repeating errors
+// Handle OAuth callback with error handling and retries
 const handleLoginCallback = async (code, retries = 1) => {
   try {
     // Get previously saved code verifier
@@ -119,7 +126,7 @@ const handleLoginCallback = async (code, retries = 1) => {
     tokenData.append('code_verifier', codeVerifier);
     
     try {
-      // Use Basic Authentication instead of sending client_id in body
+      // Use Basic Authentication
       const response = await axios.post(`${OAUTH_URL}/token`, tokenData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -130,20 +137,20 @@ const handleLoginCallback = async (code, retries = 1) => {
       // Save tokens
       setTokens(response.data);
       
-      // Remove code verifier as it's no longer needed
+      // Clear code verifier
       localStorage.removeItem('codeVerifier');
       
       return response.data;
     } catch (error) {
       console.error('Token exchange error:', error);
       
-      // Add specific error handling
+      // Handle specific errors
       if (error.response) {
-        // If server returns an error
+        // Server returned an error
         const statusCode = error.response.status;
         const errorData = error.response.data;
         
-        // Remove code verifier to prevent error repetition
+        // Clean up code verifier to avoid repeating the error
         localStorage.removeItem('codeVerifier');
         
         throw {
@@ -152,37 +159,53 @@ const handleLoginCallback = async (code, retries = 1) => {
           error_description: errorData.error_description || 'An error occurred during token exchange'
         };
       } else if (error.request) {
-        // If request was sent but no response received
+        // No response received
         localStorage.removeItem('codeVerifier');
         throw { error: 'No response from server' };
       } else {
-        // Request configuration error
+        // Request setup error
         localStorage.removeItem('codeVerifier');
         throw { error: error.message || 'Error setting up request' };
       }
     }
   } catch (error) {
-    // Ensure code verifier is removed in all error cases
+    // Ensure code verifier is cleaned up in all error cases
     localStorage.removeItem('codeVerifier');
 
     if (retries > 0 && error.status === 500) {
-      // Retry only for server errors, with exponential backoff
+      // Retry for server errors with exponential backoff
       await new Promise(resolve => setTimeout(resolve, 1000));
       return handleLoginCallback(code, retries - 1);
     }
     throw error;
-    
   }
 };
 
-// Refresh access token using refresh token
+/**
+ * Refresh access token using refresh token.
+ * This function includes proper error handling for invalid refresh tokens
+ * and will only make one refresh attempt at a time.
+ * 
+ * @returns {Promise<string>} New access token
+ * @throws {Error} If refresh fails
+ */
 const refreshAccessToken = async () => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error('No refresh token available');
+  // If refresh is already in progress, wait for it to complete
+  if (isRefreshingToken) {
+    return new Promise((resolve, reject) => {
+      // Add this request to the pending queue
+      pendingRequests.push({ resolve, reject });
+    });
   }
   
   try {
+    isRefreshingToken = true;
+    const refreshToken = getRefreshToken();
+    
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+    
     const tokenData = new URLSearchParams();
     tokenData.append('grant_type', 'refresh_token');
     tokenData.append('refresh_token', refreshToken);
@@ -194,50 +217,85 @@ const refreshAccessToken = async () => {
       }
     });
     
+    // Save new tokens
     setTokens(response.data);
+    
+    // Resolve all pending requests
+    pendingRequests.forEach(request => request.resolve(response.data.access_token));
+    pendingRequests = [];
+    
     return response.data.access_token;
   } catch (error) {
-    // If refresh token is invalid, log out the user
+    console.error('Token refresh error:', error);
+    
+    // Reject all pending requests
+    pendingRequests.forEach(request => request.reject(error));
+    pendingRequests = [];
+    
+    // If refresh token is invalid, log out user
     logout();
+    
     throw new Error('Session expired. Please login again.');
+  } finally {
+    isRefreshingToken = false;
   }
 };
 
-// Logout
+/**
+ * Checks if the access token is expired and refreshes it if needed.
+ * Only attempts to refresh once.
+ * 
+ * @returns {Promise<string>} Valid access token
+ * @throws {Error} If unable to get a valid token
+ */
+const getValidAccessToken = async () => {
+  let token = getAccessToken();
+  
+  if (!token) {
+    throw new Error('No access token available');
+  }
+  
+  if (isTokenExpired()) {
+    try {
+      token = await refreshAccessToken();
+    } catch (error) {
+      // If refresh fails, throw error to trigger login
+      throw error;
+    }
+  }
+  
+  return token;
+};
+
+// Logout user
 const logout = () => {
-  // Always remove tokens from localStorage first
+  // Clear tokens before redirecting
   removeTokens();
   
-  // Create logout URL with redirect_uri back to home page
+  // Redirect to auth server logout
   const homeUrl = 'http://localhost:3000/';
   const logoutUrl = `${AUTH_URL}/logout`;
   
-  // Redirect to auth server logout page
   window.location.href = logoutUrl;
 };
 
-// Create axios instance with interceptor for token handling
+// Create authenticated axios instance with token refresh
 const createAuthenticatedAxios = () => {
   const instance = axios.create();
   
   instance.interceptors.request.use(async (config) => {
-    let token = getAccessToken();
-    
-    // If token is expired, refresh it
-    if (token && isTokenExpired()) {
-      try {
-        token = await refreshAccessToken();
-      } catch (error) {
-        // If refresh fails, throw error to be handled outside
-        throw error;
+    try {
+      // Get valid token (refreshes if needed)
+      if (isAuthenticated()) {
+        const token = await getValidAccessToken();
+        config.headers['Authorization'] = `Bearer ${token}`;
       }
+      return config;
+    } catch (error) {
+      // Redirect to login if token refresh fails
+      window.location.href = '/login';
+      return Promise.reject(error);
     }
-    
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    return config;
   }, (error) => Promise.reject(error));
   
   return instance;
@@ -283,7 +341,7 @@ const changePassword = async (currentPassword, newPassword, passwordConfirmation
 // Check if user is authenticated
 const isAuthenticated = () => {
   const token = getAccessToken();
-  return !!token && !isTokenExpired();
+  return !!token;
 };
 
 export const authService = {
@@ -296,7 +354,8 @@ export const authService = {
   changePassword,
   getAccessToken,
   isAuthenticated,
-  refreshAccessToken
+  refreshAccessToken,
+  getValidAccessToken
 };
 
 export default authService;

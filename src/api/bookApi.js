@@ -1,5 +1,6 @@
 // src/api/bookApi.js
 import axios from 'axios';
+import authService from '../services/authService';
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -11,16 +12,42 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor for authentication if needed
+/**
+ * Request interceptor that checks token expiration before making requests
+ * and refreshes the token if needed
+ */
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+  async (config) => {
+    // Only add auth header for authenticated routes
+    if (authService.isAuthenticated()) {
+      try {
+        // This will check expiration and refresh if needed
+        const token = await authService.getValidAccessToken();
+        config.headers['Authorization'] = `Bearer ${token}`;
+      } catch (error) {
+        console.error('Authentication error:', error);
+        // Redirect to login page if token refresh fails
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Response interceptor to handle authentication errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // If server returns 401 Unauthorized, redirect to login
+    if (error.response && error.response.status === 401) {
+      console.error('Authentication failed:', error);
+      // Clear tokens and redirect to login
+      authService.logout();
+    }
+    return Promise.reject(error);
+  }
 );
 
 // Book API methods

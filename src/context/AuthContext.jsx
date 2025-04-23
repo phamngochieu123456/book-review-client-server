@@ -21,22 +21,37 @@ export const AuthProvider = ({ children }) => {
       
       try {
         if (authService.isAuthenticated()) {
-          const accessToken = authService.getAccessToken();
-          
-          // Decode token to get user information
-          const decodedToken = jwtDecode(accessToken);
-          
-          // Extract user information from token
-          const userData = {
-            id: decodedToken.user_id,
-            username: decodedToken.sub,
-            roles: decodedToken.roles || [],
-            permissions: decodedToken.permissions || []
-          };
-          
-          setUser(userData);
-          setIsAuthenticated(true);
-          setIsAdmin(userData.roles.includes('ADMIN'));
+          try {
+            // Get a valid token (will refresh if needed)
+            await authService.getValidAccessToken();
+            
+            const accessToken = authService.getAccessToken();
+            
+            // Decode token to get user info
+            const decodedToken = jwtDecode(accessToken);
+            
+            // Get user data from token
+            const userData = {
+              id: decodedToken.user_id,
+              username: decodedToken.sub,
+              roles: decodedToken.roles || [],
+              permissions: decodedToken.permissions || []
+            };
+            
+            setUser(userData);
+            setIsAuthenticated(true);
+            setIsAdmin(userData.roles.includes('ADMIN'));
+          } catch (tokenError) {
+            console.error('Token validation failed:', tokenError);
+            // Clear invalid tokens
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('expiresAt');
+            
+            setIsAuthenticated(false);
+            setUser(null);
+            setIsAdmin(false);
+          }
         }
       } catch (err) {
         console.error('Error checking authentication:', err);
@@ -53,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     checkLoggedIn();
   }, []);
 
-  // Login function - initiates OAuth2 flow
+  // Login function - initialize OAuth2 flow
   const login = async () => {
     setLoading(true);
     setError(null);
@@ -69,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Handle OAuth callback - using useCallback to avoid recreating this function on each render
+  // Handle OAuth callback - use useCallback to avoid recreating the function
   const handleOAuthCallback = useCallback(async (code) => {
     setLoading(true);
     setError(null);
@@ -77,10 +92,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const tokens = await authService.handleLoginCallback(code);
       
-      // Decode token to get user information
+      // Decode token to get user info
       const decodedToken = jwtDecode(tokens.access_token);
       
-      // Extract user information from token
+      // Get user data from token
       const userData = {
         id: decodedToken.user_id,
         username: decodedToken.sub,
@@ -99,7 +114,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return false;
     }
-  }, []); // No dependencies because it doesn't depend on any state or props
+  }, []);
 
   // Logout function
   const logout = () => {
