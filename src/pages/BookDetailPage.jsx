@@ -1,4 +1,4 @@
-// src/pages/BookDetailPage.jsx (Updated version)
+// src/pages/BookDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { 
@@ -43,7 +43,7 @@ const BookDetailPage = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   // Admin status - in a real app, would come from auth context
-  const isAdmin = user && user.isAdmin;
+  const isAdmin = user && user.roles?.includes('ADMIN');
 
   useEffect(() => {
     const fetchBookDetails = async () => {
@@ -205,7 +205,19 @@ const BookDetailPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <PersonIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
             <Typography variant="h6" color="text.secondary">
-              By: {book.authors.map(author => author.name).join(', ')}
+              By: {book.authors.map((author, index) => (
+                <React.Fragment key={author.id}>
+                  {index > 0 && ', '}
+                  <Link
+                    component={RouterLink}
+                    to={`/books?authorId=${author.id}`}
+                    color="primary"
+                    sx={{ textDecoration: 'none' }}
+                  >
+                    {author.name}
+                  </Link>
+                </React.Fragment>
+              ))}
             </Typography>
           </Box>
 
@@ -299,7 +311,14 @@ const BookDetailPage = () => {
                         {author.name.charAt(0)}
                       </Avatar>
                       <Typography variant="subtitle1" fontWeight="medium">
-                        {author.name}
+                        <Link
+                          component={RouterLink}
+                          to={`/books?authorId=${author.id}`}
+                          color="inherit"
+                          sx={{ textDecoration: 'none' }}
+                        >
+                          {author.name}
+                        </Link>
                       </Typography>
                     </Box>
                     {author.biography ? (

@@ -10,10 +10,11 @@ import {
   Popover,
   List,
   ListItem,
-  ListItemAvatar,
   ListItemText,
   Avatar,
-  Typography
+  Typography,
+  Divider,
+  Paper
 } from '@mui/material';
 import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
@@ -21,6 +22,8 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import SentimentVerySatisfiedIcon from '@mui/icons-material/SentimentVerySatisfied';
 import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import MoodBadIcon from '@mui/icons-material/MoodBad';
+import MoodBadOutlinedIcon from '@mui/icons-material/MoodBadOutlined';
 import { useAuth } from '../../context/AuthContext';
 import { reactionApi } from '../../api/reviewCommentApi';
 
@@ -29,7 +32,8 @@ const REACTION_TYPES = {
   LIKE: 'like',
   LOVE: 'love',
   HAPPY: 'happy',
-  SAD: 'sad'
+  SAD: 'sad',
+  ANGRY: 'angry'
 };
 
 // Icon mapping for each reaction type (filled and outlined versions)
@@ -49,6 +53,10 @@ const REACTION_ICONS = {
   [REACTION_TYPES.SAD]: {
     filled: <SentimentVeryDissatisfiedIcon fontSize="small" />,
     outlined: <SentimentVeryDissatisfiedIcon fontSize="small" />
+  },
+  [REACTION_TYPES.ANGRY]: {
+    filled: <MoodBadIcon fontSize="small" />,
+    outlined: <MoodBadOutlinedIcon fontSize="small" />
   }
 };
 
@@ -57,7 +65,17 @@ const REACTION_COLORS = {
   [REACTION_TYPES.LIKE]: 'primary.main',
   [REACTION_TYPES.LOVE]: '#e91e63', // pink
   [REACTION_TYPES.HAPPY]: '#ffc107', // amber
-  [REACTION_TYPES.SAD]: '#9e9e9e'  // grey
+  [REACTION_TYPES.SAD]: '#9e9e9e', // grey
+  [REACTION_TYPES.ANGRY]: '#f44336' // red
+};
+
+// Human-readable labels for each reaction type
+const REACTION_LABELS = {
+  [REACTION_TYPES.LIKE]: 'Like',
+  [REACTION_TYPES.LOVE]: 'Love',
+  [REACTION_TYPES.HAPPY]: 'Happy',
+  [REACTION_TYPES.SAD]: 'Sad',
+  [REACTION_TYPES.ANGRY]: 'Angry'
 };
 
 const ReactionButtons = ({ 
@@ -74,6 +92,10 @@ const ReactionButtons = ({
   // Quick reaction menu state
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  
+  // Reaction breakdown tooltip/popover state
+  const [countAnchorEl, setCountAnchorEl] = useState(null);
+  const isCountPopoverOpen = Boolean(countAnchorEl);
   
   // Load user's reaction and reaction summary
   useEffect(() => {
@@ -154,6 +176,19 @@ const ReactionButtons = ({
     setAnchorEl(null);
   };
   
+  // Handle opening reaction count breakdown popover
+  const handleCountClick = (event) => {
+    // Only show popover if there are reactions
+    if (reactionSummary.totalCount > 0) {
+      setCountAnchorEl(event.currentTarget);
+    }
+  };
+  
+  // Handle closing reaction count breakdown popover
+  const handleCountClose = () => {
+    setCountAnchorEl(null);
+  };
+  
   // Get the primary reaction type (the one with the most count)
   const getPrimaryReactionType = () => {
     const { countsByType } = reactionSummary;
@@ -179,8 +214,25 @@ const ReactionButtons = ({
     return REACTION_COLORS[reactionType] || 'primary.main';
   };
   
+  // Generate reaction counts display for the popover
+  const getReactionCounts = () => {
+    const { countsByType } = reactionSummary;
+    if (!countsByType) return [];
+    
+    // Sort reaction types by count (descending)
+    return Object.entries(countsByType)
+      .filter(([_, count]) => count > 0) // Only include reactions with counts > 0
+      .sort(([_, countA], [__, countB]) => countB - countA) // Sort by count descending
+      .map(([type, count]) => ({
+        type,
+        count,
+        label: REACTION_LABELS[type] || type.charAt(0).toUpperCase() + type.slice(1)
+      }));
+  };
+  
   const primaryReactionType = getPrimaryReactionType();
   const userReactionType = userReaction?.reactionType;
+  const reactionCounts = getReactionCounts();
   
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -213,13 +265,82 @@ const ReactionButtons = ({
           // Show primary reaction text
           primaryReactionType.charAt(0).toUpperCase() + primaryReactionType.slice(1)
         )}
-        {' '}
-        {!summaryLoading && (
-          <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-            {reactionSummary.totalCount > 0 ? `(${reactionSummary.totalCount})` : ''}
+        
+        {/* Reaction count that triggers popover on click */}
+        {!summaryLoading && reactionSummary.totalCount > 0 && (
+          <Typography 
+            component="span" 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{ 
+              ml: 0.5,
+              cursor: 'pointer',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the parent button
+              handleCountClick(e);
+            }}
+          >
+            ({reactionSummary.totalCount})
           </Typography>
         )}
       </Button>
+      
+      {/* Reaction counts breakdown popover */}
+      <Popover
+        open={isCountPopoverOpen}
+        anchorEl={countAnchorEl}
+        onClose={handleCountClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+      >
+        <Paper sx={{ p: 1, maxWidth: 280 }}>
+          <Typography variant="subtitle2" sx={{ p: 1 }}>
+            Reaction Breakdown
+          </Typography>
+          <Divider />
+          <List dense>
+            {reactionCounts.map(({ type, count, label }) => (
+              <ListItem key={type}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    width: '100%',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar 
+                      sx={{ 
+                        width: 24, 
+                        height: 24, 
+                        bgcolor: getButtonColor(type),
+                        mr: 1
+                      }}
+                    >
+                      {REACTION_ICONS[type]?.filled || REACTION_ICONS[REACTION_TYPES.LIKE].filled}
+                    </Avatar>
+                    <Typography variant="body2">{label}</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {count}
+                  </Typography>
+                </Box>
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      </Popover>
       
       {/* Quick reactions button */}
       {isAuthenticated && (
@@ -255,7 +376,7 @@ const ReactionButtons = ({
           >
             <Box sx={{ display: 'flex', p: 0.5 }}>
               {Object.values(REACTION_TYPES).map((type) => (
-                <Tooltip key={type} title={type.charAt(0).toUpperCase() + type.slice(1)}>
+                <Tooltip key={type} title={REACTION_LABELS[type]}>
                   <IconButton
                     onClick={() => handleReactionClick(type)}
                     size="small"

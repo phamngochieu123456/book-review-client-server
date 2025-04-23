@@ -17,14 +17,13 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SortIcon from '@mui/icons-material/Sort';
-import { authorApi, genreApi } from '../../api/bookApi';
+import { genreApi } from '../../api/bookApi';
 
 const BookFilters = ({ onFilterChange, initialFilters }) => {
   const theme = useTheme();
   const [filters, setFilters] = useState({
     searchTerm: '',
     categoryId: '',
-    authorId: '',
     sortBy: 'createdAt',
     sortDir: 'desc',
     ...initialFilters
@@ -34,9 +33,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
   const [searchInputValue, setSearchInputValue] = useState(initialFilters?.searchTerm || '');
   
   const [genres, setGenres] = useState([]);
-  const [authors, setAuthors] = useState([]);
   const [genresLoading, setGenresLoading] = useState(true);
-  const [authorsLoading, setAuthorsLoading] = useState(true);
 
   // Sort options
   const sortOptions = [
@@ -46,7 +43,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
     { value: 'publicationYear', label: 'Publication Year' }
   ];
 
-  // Fetch genres and authors for filter dropdowns
+  // Fetch genres for filter dropdowns
   useEffect(() => {
     // Fetch genres
     const fetchGenres = async () => {
@@ -63,24 +60,8 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
       }
     };
 
-    // Fetch authors
-    const fetchAuthors = async () => {
-      setAuthorsLoading(true);
-      try {
-        const response = await authorApi.getAllAuthors();
-        console.log('Authors API response:', response);
-        setAuthors(response?.content || []);
-      } catch (error) {
-        console.error('Error fetching authors:', error);
-        setAuthors([]);
-      } finally {
-        setAuthorsLoading(false);
-      }
-    };
-
-    // Execute both fetch operations independently
+    // Execute fetch operation
     fetchGenres();
-    fetchAuthors();
   }, []);
 
   // Initialize search input with initial filter
@@ -154,7 +135,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
       
       <Grid container spacing={3}>
         {/* Search */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6}>
           <form onSubmit={handleSearchSubmit}>
             <TextField
               fullWidth
@@ -195,31 +176,6 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
               {genres.map((genre) => (
                 <MenuItem key={genre.id} value={genre.id}>
                   {genre.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-        
-        {/* Author Filter */}
-        <Grid item xs={12} sm={6} md={2}>
-          <FormControl fullWidth variant="outlined">
-            <InputLabel id="author-filter-label">Author</InputLabel>
-            <Select
-              labelId="author-filter-label"
-              id="author-filter"
-              name="authorId"
-              value={filters.authorId}
-              onChange={handleFilterChange}
-              label="Author"
-              disabled={authorsLoading}
-            >
-              <MenuItem value="">
-                <em>All Authors</em>
-              </MenuItem>
-              {authors.map((author) => (
-                <MenuItem key={author.id} value={author.id}>
-                  {author.name}
                 </MenuItem>
               ))}
             </Select>

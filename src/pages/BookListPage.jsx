@@ -15,14 +15,17 @@ import {
   InputAdornment,
   Paper
 } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BookCard from '../components/book/BookCard';
 import BookFilters from '../components/book/BookFilters';
-import { bookApi } from '../api/bookApi';
+import { bookApi, authorApi } from '../api/bookApi';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import InputIcon from '@mui/icons-material/Input';
 
 const BookListPage = () => {
   const theme = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,9 +40,44 @@ const BookListPage = () => {
     searchTerm: ''
   });
   
+  // For displaying author name when viewing books by a specific author
+  const [authorName, setAuthorName] = useState(null);
+  
   // Custom page navigation
   const [customPage, setCustomPage] = useState('');
   const [customPageError, setCustomPageError] = useState('');
+
+  // Extract authorId from URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const authorId = params.get('authorId');
+    
+    if (authorId) {
+      // Update filters with authorId
+      setFilters(prev => ({
+        ...prev, 
+        authorId,
+        // Reset to first page when changing author
+        page: 0
+      }));
+      
+      // Fetch author name if we have an authorId
+      const fetchAuthorName = async () => {
+        try {
+          const authorData = await authorApi.getAuthorById(authorId);
+          setAuthorName(authorData.name);
+        } catch (err) {
+          console.error('Error fetching author details:', err);
+          setAuthorName('Unknown Author');
+        }
+      };
+      
+      fetchAuthorName();
+    } else {
+      // Reset authorName if no authorId in URL
+      setAuthorName(null);
+    }
+  }, [location.search]);
 
   // Load books from API
   useEffect(() => {
@@ -83,11 +121,18 @@ const BookListPage = () => {
 
   // Handle filter changes
   const handleFilterChange = (newFilters) => {
+    // If authorId is present in the URL, preserve it 
+    // unless explicitly changed in newFilters
+    const currentAuthorId = filters.authorId;
+    const updatedAuthorId = 
+      'authorId' in newFilters ? newFilters.authorId : currentAuthorId;
+    
     // Reset to first page when filters change
     setFilters({
       ...filters,
       ...newFilters,
-      page: 0
+      page: 0,
+      authorId: updatedAuthorId
     });
     
     // Reset custom page input
@@ -135,14 +180,39 @@ const BookListPage = () => {
     window.scrollTo(0, 0);
   };
 
+  // Clear author filter
+  const handleClearAuthorFilter = () => {
+    // Navigate to books page without authorId parameter
+    navigate('/books');
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
         <LibraryBooksIcon sx={{ fontSize: 32, mr: 2, color: theme.palette.primary.main }} />
         <Typography variant="h4" component="h1" color="text.primary" fontWeight="bold">
-          Book Collection
+          {authorName ? `Books by ${authorName}` : 'Book Collection'}
         </Typography>
       </Box>
+      
+      {/* Author filter notice */}
+      {authorName && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 3 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={handleClearAuthorFilter}
+            >
+              Show All Books
+            </Button>
+          }
+        >
+          Currently showing books by: <strong>{authorName}</strong>
+        </Alert>
+      )}
       
       {/* Filters */}
       <BookFilters 

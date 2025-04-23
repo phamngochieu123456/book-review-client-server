@@ -14,7 +14,7 @@ const apiClient = axios.create({
 // Add request interceptor for authentication if needed
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -85,6 +85,18 @@ export const bookApi = {
       console.error(`Error deleting book with id ${id}:`, error);
       throw error;
     }
+  },
+
+  // Get books by author ID
+  getBooksByAuthor: async (authorId, page = 0, size = 12, sortBy = 'publicationYear', sortDir = 'desc') => {
+    try {
+      const params = { page, size, sortBy, sortDir, authorId };
+      const response = await apiClient.get('/books', { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching books for author ID ${authorId}:`, error);
+      throw error;
+    }
   }
 };
 
@@ -97,6 +109,17 @@ export const authorApi = {
       return response.data;
     } catch (error) {
       console.error('Error fetching authors:', error);
+      throw error;
+    }
+  },
+  
+  // Get author by ID
+  getAuthorById: async (id) => {
+    try {
+      const response = await apiClient.get(`/authors/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching author with id ${id}:`, error);
       throw error;
     }
   }
