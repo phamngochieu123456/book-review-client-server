@@ -85,12 +85,12 @@ const BookCard = ({ book }) => {
             </Typography>
           </Box>
           
-          {/* Categories */}
+          {/* Genres (replaces Categories) */}
           <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {book.categories && book.categories.slice(0, 3).map((category) => (
+            {book.genres && book.genres.slice(0, 3).map((genre) => (
               <Chip 
-                key={category.id} 
-                label={category.name} 
+                key={genre.id} 
+                label={genre.name} 
                 size="small" 
                 color="primary" 
                 variant="outlined"

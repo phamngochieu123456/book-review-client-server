@@ -33,9 +33,9 @@ const BookListPage = () => {
   const [filters, setFilters] = useState({
     page: 0,
     size: 24, // Fixed page size to 24
-    sortBy: 'createdAt',
+    sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
     sortDir: 'desc',
-    categoryId: '',
+    categoryId: '', // Used for genre filtering (genres share IDs with categories)
     authorId: '',
     searchTerm: ''
   });

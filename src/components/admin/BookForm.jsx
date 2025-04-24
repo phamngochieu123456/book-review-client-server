@@ -20,7 +20,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { bookApi, authorApi, categoryApi } from '../../api/bookApi';
+import { bookApi, authorApi, genreApi } from '../../api/bookApi';
 
 // ISBN validation regex
 const isbnRegex = /^(97(8|9))?\d{9}(\d|X)$/;
@@ -42,7 +42,7 @@ const BookForm = ({ bookId = null }) => {
     coverImageUrl: '',
     publicationYear: '',
     authorIds: [],
-    categoryIds: []
+    categoryIds: [] // Used for genres (genres share IDs with categories)
   });
   
   // Form validation errors
@@ -50,22 +50,22 @@ const BookForm = ({ bookId = null }) => {
   
   // Options for select inputs
   const [authors, setAuthors] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [genres, setGenres] = useState([]); // Changed from categories to genres
   
-  // Fetch authors and categories on component mount
+  // Fetch authors and genres on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [authorsData, categoriesData] = await Promise.all([
+        const [authorsData, genresData] = await Promise.all([
           authorApi.getAllAuthors(),
-          categoryApi.getAllCategories()
+          genreApi.getAllGenres() // Changed from categoryApi to genreApi
         ]);
         
         setAuthors(authorsData.content || []);
-        setCategories(categoriesData.content || []);
+        setGenres(genresData || []); // Changed from categories to genres
       } catch (err) {
         console.error('Error fetching form data:', err);
-        setError('Failed to load authors and categories. Please try again.');
+        setError('Failed to load authors and genres. Please try again.');
       }
     };
     
@@ -88,7 +88,7 @@ const BookForm = ({ bookId = null }) => {
             coverImageUrl: bookData.coverImageUrl || '',
             publicationYear: bookData.publicationYear || '',
             authorIds: bookData.authors?.map(author => author.id) || [],
-            categoryIds: bookData.categories?.map(category => category.id) || []
+            categoryIds: bookData.genres?.map(genre => genre.id) || [] // Map genres to categoryIds
           });
         } catch (err) {
           console.error('Error fetching book:', err);
@@ -120,7 +120,7 @@ const BookForm = ({ bookId = null }) => {
     }
   };
   
-  // Handle multi-select change (authors and categories)
+  // Handle multi-select change (authors and genres)
   const handleMultiSelectChange = (event) => {
     const { name, value } = event.target;
     
@@ -174,9 +174,9 @@ const BookForm = ({ bookId = null }) => {
       newErrors.authorIds = 'At least one author must be selected';
     }
     
-    // Must have at least one category
+    // Must have at least one genre
     if (!formData.categoryIds.length) {
-      newErrors.categoryIds = 'At least one category must be selected';
+      newErrors.categoryIds = 'At least one genre must be selected';
     }
     
     setErrors(newErrors);
@@ -336,7 +336,7 @@ const BookForm = ({ bookId = null }) => {
           </Grid>
           
           {/* Authors */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={6} md={6}>
             <FormControl 
               fullWidth 
               error={Boolean(errors.authorIds)}
@@ -375,29 +375,29 @@ const BookForm = ({ bookId = null }) => {
             </FormControl>
           </Grid>
           
-          {/* Categories */}
-          <Grid item xs={12} md={6}>
+          {/* Genres (previously Categories) */}
+          <Grid item xs={12} sm={6} md={6}>
             <FormControl 
               fullWidth 
               error={Boolean(errors.categoryIds)}
               required
             >
-              <InputLabel id="categories-label">Categories</InputLabel>
+              <InputLabel id="genres-label">Genres</InputLabel>
               <Select
-                labelId="categories-label"
+                labelId="genres-label"
                 multiple
-                name="categoryIds"
+                name="categoryIds"  // Keep as categoryIds for API compatibility
                 value={formData.categoryIds}
                 onChange={handleMultiSelectChange}
-                input={<OutlinedInput label="Categories" />}
+                input={<OutlinedInput label="Genres" />}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((categoryId) => {
-                      const category = categories.find(c => c.id === categoryId);
+                    {selected.map((genreId) => {
+                      const genre = genres.find(g => g.id === genreId);
                       return (
                         <Chip 
-                          key={categoryId} 
-                          label={category ? category.name : 'Unknown'}
+                          key={genreId} 
+                          label={genre ? genre.name : 'Unknown'}
                           size="small"
                         />
                       );
@@ -405,9 +405,9 @@ const BookForm = ({ bookId = null }) => {
                   </Box>
                 )}
               >
-                {categories.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
+                {genres.map((genre) => (
+                  <MenuItem key={genre.id} value={genre.id}>
+                    {genre.name}
                   </MenuItem>
                 ))}
               </Select>

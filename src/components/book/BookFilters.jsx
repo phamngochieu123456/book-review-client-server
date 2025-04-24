@@ -23,8 +23,8 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
   const theme = useTheme();
   const [filters, setFilters] = useState({
     searchTerm: '',
-    categoryId: '',
-    sortBy: 'createdAt',
+    categoryId: '', // Used for genre filtering (genres are a subset of categories sharing the same IDs)
+    sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
     sortDir: 'desc',
     ...initialFilters
   });
@@ -37,9 +37,8 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
 
   // Sort options
   const sortOptions = [
-    { value: 'createdAt', label: 'Date Added' },
+    { value: 'averageRating', label: 'Rating' }, // Moved to top as new default
     { value: 'title', label: 'Title' },
-    { value: 'averageRating', label: 'Rating' },
     { value: 'publicationYear', label: 'Publication Year' }
   ];
 
@@ -164,7 +163,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
             <Select
               labelId="genre-filter-label"
               id="genre-filter"
-              name="categoryId"  // Keep as categoryId for API compatibility
+              name="categoryId"  // Keep as categoryId for API compatibility (genres share IDs with categories)
               value={filters.categoryId}
               onChange={handleFilterChange}
               label="Genre"
