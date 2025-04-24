@@ -23,7 +23,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
   const theme = useTheme();
   const [filters, setFilters] = useState({
     searchTerm: '',
-    categoryId: '', // Used for genre filtering (genres are a subset of categories sharing the same IDs)
+    genreId: '', // Changed from categoryId to genreId
     sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
     sortDir: 'desc',
     ...initialFilters
@@ -156,15 +156,15 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
           </form>
         </Grid>
         
-        {/* Genre Filter (Previously Category Filter) */}
+        {/* Genre Filter */}
         <Grid item xs={12} sm={6} md={2}>
           <FormControl fullWidth variant="outlined">
             <InputLabel id="genre-filter-label">Genre</InputLabel>
             <Select
               labelId="genre-filter-label"
               id="genre-filter"
-              name="categoryId"  // Keep as categoryId for API compatibility (genres share IDs with categories)
-              value={filters.categoryId}
+              name="genreId" // Changed from categoryId to genreId
+              value={filters.genreId}
               onChange={handleFilterChange}
               label="Genre"
               disabled={genresLoading}

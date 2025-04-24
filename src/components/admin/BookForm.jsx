@@ -42,7 +42,7 @@ const BookForm = ({ bookId = null }) => {
     coverImageUrl: '',
     publicationYear: '',
     authorIds: [],
-    categoryIds: [] // Used for genres (genres share IDs with categories)
+    genreIds: [] // Changed from categoryIds to genreIds
   });
   
   // Form validation errors
@@ -88,7 +88,7 @@ const BookForm = ({ bookId = null }) => {
             coverImageUrl: bookData.coverImageUrl || '',
             publicationYear: bookData.publicationYear || '',
             authorIds: bookData.authors?.map(author => author.id) || [],
-            categoryIds: bookData.genres?.map(genre => genre.id) || [] // Map genres to categoryIds
+            genreIds: bookData.genres?.map(genre => genre.id) || [] // Map genres to genreIds
           });
         } catch (err) {
           console.error('Error fetching book:', err);
@@ -175,8 +175,8 @@ const BookForm = ({ bookId = null }) => {
     }
     
     // Must have at least one genre
-    if (!formData.categoryIds.length) {
-      newErrors.categoryIds = 'At least one genre must be selected';
+    if (!formData.genreIds.length) {
+      newErrors.genreIds = 'At least one genre must be selected';
     }
     
     setErrors(newErrors);
@@ -220,7 +220,7 @@ const BookForm = ({ bookId = null }) => {
           coverImageUrl: '',
           publicationYear: '',
           authorIds: [],
-          categoryIds: []
+          genreIds: []
         });
       }
       
@@ -375,19 +375,19 @@ const BookForm = ({ bookId = null }) => {
             </FormControl>
           </Grid>
           
-          {/* Genres (previously Categories) */}
+          {/* Genres */}
           <Grid item xs={12} sm={6} md={6}>
             <FormControl 
               fullWidth 
-              error={Boolean(errors.categoryIds)}
+              error={Boolean(errors.genreIds)}
               required
             >
               <InputLabel id="genres-label">Genres</InputLabel>
               <Select
                 labelId="genres-label"
                 multiple
-                name="categoryIds"  // Keep as categoryIds for API compatibility
-                value={formData.categoryIds}
+                name="genreIds"  // Changed from categoryIds to genreIds
+                value={formData.genreIds}
                 onChange={handleMultiSelectChange}
                 input={<OutlinedInput label="Genres" />}
                 renderValue={(selected) => (
@@ -411,7 +411,7 @@ const BookForm = ({ bookId = null }) => {
                   </MenuItem>
                 ))}
               </Select>
-              {errors.categoryIds && <FormHelperText>{errors.categoryIds}</FormHelperText>}
+              {errors.genreIds && <FormHelperText>{errors.genreIds}</FormHelperText>}
             </FormControl>
           </Grid>
           

@@ -254,23 +254,23 @@ const BookDetailPage = () => {
             </Typography>
           </Box>
 
-          {/* Categories */}
-          {book.categories && book.categories.length > 0 && (
+          {/* Genres */}
+          {book.genres && book.genres.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <CategoryIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
                 <Typography variant="body1" fontWeight="medium">
-                  Categories:
+                  Genres:
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {book.categories.map((category) => (
+                {book.genres.map((genre) => (
                   <Chip 
-                    key={category.id} 
-                    label={category.name} 
+                    key={genre.id} 
+                    label={genre.name} 
                     variant="filled"
                     component={RouterLink}
-                    to={`/books?categoryId=${category.id}`}
+                    to={`/books?genreId=${genre.id}`}
                     clickable
                     color="primary"
                   />

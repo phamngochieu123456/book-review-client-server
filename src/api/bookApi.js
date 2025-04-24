@@ -53,12 +53,12 @@ apiClient.interceptors.response.use(
 // Book API methods
 export const bookApi = {
   // Get all books with filtering, sorting, and pagination
-  getAllBooks: async (page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc', categoryId = null, authorId = null, searchTerm = null) => {
+  getAllBooks: async (page = 0, size = 10, sortBy = 'averageRating', sortDir = 'desc', genreId = null, authorId = null, searchTerm = null) => {
     try {
       const params = { page, size, sortBy, sortDir };
       
       // Add optional filters if they exist
-      if (categoryId) params.categoryId = categoryId;
+      if (genreId) params.genreId = genreId; // Changed from categoryId to genreId
       if (authorId) params.authorId = authorId;
       if (searchTerm) params.searchTerm = searchTerm;
       
@@ -147,20 +147,6 @@ export const authorApi = {
       return response.data;
     } catch (error) {
       console.error(`Error fetching author with id ${id}:`, error);
-      throw error;
-    }
-  }
-};
-
-// Category API methods
-export const categoryApi = {
-  // We'll need to get categories for dropdowns in forms
-  getAllCategories: async () => {
-    try {
-      const response = await apiClient.get('/categories');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching categories:', error);
       throw error;
     }
   }

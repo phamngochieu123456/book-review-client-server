@@ -35,7 +35,7 @@ const BookListPage = () => {
     size: 24, // Fixed page size to 24
     sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
     sortDir: 'desc',
-    categoryId: '', // Used for genre filtering (genres share IDs with categories)
+    genreId: '', // Changed from categoryId to genreId
     authorId: '',
     searchTerm: ''
   });
@@ -51,6 +51,7 @@ const BookListPage = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const authorId = params.get('authorId');
+    const genreId = params.get('genreId'); // Changed from categoryId to genreId
     
     if (authorId) {
       // Update filters with authorId
@@ -77,6 +78,15 @@ const BookListPage = () => {
       // Reset authorName if no authorId in URL
       setAuthorName(null);
     }
+
+    // Handle genreId from URL param
+    if (genreId) {
+      setFilters(prev => ({
+        ...prev,
+        genreId,
+        page: 0
+      }));
+    }
   }, [location.search]);
 
   // Load books from API
@@ -91,7 +101,7 @@ const BookListPage = () => {
           size, 
           sortBy, 
           sortDir, 
-          categoryId, 
+          genreId, // Changed from categoryId to genreId
           authorId, 
           searchTerm 
         } = filters;
@@ -114,7 +124,7 @@ const BookListPage = () => {
             size, 
             sortBy, 
             sortDir, 
-            categoryId || null, 
+            genreId || null, // Changed from categoryId to genreId
             null, // Don't pass authorId here as we're using the dedicated endpoint
             searchTerm || null
           );
