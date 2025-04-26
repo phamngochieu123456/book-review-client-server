@@ -13,6 +13,7 @@ import PrivateRoute from './components/PrivateRoute';
 import HomePage from './pages/HomePage';
 import BookListPage from './pages/BookListPage';
 import BookDetailPage from './pages/BookDetailPage';
+import AuthorBooksPage from './pages/AuthorBooksPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
@@ -104,6 +105,7 @@ const App = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/books" element={<BookListPage />} />
             <Route path="/books/:id" element={<BookDetailPage />} />
+            <Route path="/authors/:authorId/books" element={<AuthorBooksPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />

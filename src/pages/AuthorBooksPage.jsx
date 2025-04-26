@@ -1,4 +1,4 @@
-// src/pages/BookListPage.jsx
+// src/pages/AuthorBooksPage.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   Container, 
@@ -10,124 +10,100 @@ import {
   Alert,
   useTheme,
   Fade,
-  TextField,
+  Paper,
   Button,
-  InputAdornment,
-  Paper
+  Breadcrumbs,
+  Link,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  InputAdornment
 } from '@mui/material';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import BookCard from '../components/book/BookCard';
-import BookFilters from '../components/book/BookFilters';
 import { bookApi, authorApi } from '../api/bookApi';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import PersonIcon from '@mui/icons-material/Person';
+import SortIcon from '@mui/icons-material/Sort';
 import InputIcon from '@mui/icons-material/Input';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-const BookListPage = () => {
+/**
+ * AuthorBooksPage Component
+ * 
+ * A dedicated page for viewing books by a specific author.
+ * This component solves the race condition issue by making a single API call
+ * to fetch books by author, instead of mixing author filtering with other filters.
+ */
+const AuthorBooksPage = () => {
   const theme = useTheme();
-  const location = useLocation();
   const navigate = useNavigate();
+  // Get authorId from URL params
+  const { authorId } = useParams();
+  
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authorLoading, setAuthorLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pageCount, setPageCount] = useState(0);
+  const [author, setAuthor] = useState(null);
   const [filters, setFilters] = useState({
     page: 0,
     size: 24, // Fixed page size to 24
-    sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
-    sortDir: 'desc',
-    genreId: '', // Changed from categoryId to genreId
-    authorId: '',
-    searchTerm: ''
+    sortBy: 'publicationYear', // Default sort for author books - chronological
+    sortDir: 'desc'
   });
-  
-  // For displaying author name when viewing books by a specific author
-  const [authorName, setAuthorName] = useState(null);
   
   // Custom page navigation
   const [customPage, setCustomPage] = useState('');
   const [customPageError, setCustomPageError] = useState('');
 
-  // Redirect to the dedicated AuthorBooksPage when authorId is in the URL
-  // Or handle genreId filter directly
+  // Fetch author details
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const authorId = params.get('authorId');
-    const genreId = params.get('genreId'); // Changed from categoryId to genreId
-    const searchTerm = params.get('searchTerm');
-    
+    const fetchAuthor = async () => {
+      setAuthorLoading(true);
+      try {
+        const authorData = await authorApi.getAuthorById(authorId);
+        setAuthor(authorData);
+      } catch (err) {
+        console.error('Error fetching author details:', err);
+        setError('Author not found or an error occurred while loading author details.');
+      } finally {
+        setAuthorLoading(false);
+      }
+    };
+
     if (authorId) {
-      // Redirect to the dedicated author books page
-      navigate(`/authors/${authorId}/books`, { replace: true });
-      return;
+      fetchAuthor();
     }
+  }, [authorId]);
 
-    // Handle genreId from URL param
-    if (genreId) {
-      setFilters(prev => ({
-        ...prev,
-        genreId,
-        page: 0
-      }));
-    }
-    
-    // Handle search term from URL param
-    if (searchTerm) {
-      setFilters(prev => ({
-        ...prev,
-        searchTerm,
-        page: 0
-      }));
-    }
-    
-    // Reset authorName when not filtering by author
-    setAuthorName(null);
-  }, [location.search, navigate]);
-
-  // Load books from API
+  // Load books from API using the dedicated author books endpoint
   useEffect(() => {
     const fetchBooks = async () => {
+      if (!authorId) return;
+      
       setLoading(true);
       setError(null);
       
       try {
-        const { 
-          page, 
-          size, 
-          sortBy, 
-          sortDir, 
-          genreId, // Changed from categoryId to genreId
-          authorId, 
-          searchTerm 
-        } = filters;
+        const { page, size, sortBy, sortDir } = filters;
         
-        let response;
-        
-        // Use the dedicated author books endpoint if filtering by author
-        if (authorId) {
-          response = await bookApi.getBooksByAuthor(
-            authorId,
-            page,
-            size,
-            sortBy,
-            sortDir
-          );
-        } else {
-          // Otherwise use the general books endpoint with optional filters
-          response = await bookApi.getAllBooks(
-            page, 
-            size, 
-            sortBy, 
-            sortDir, 
-            genreId || null, // Changed from categoryId to genreId
-            null, // Don't pass authorId here as we're using the dedicated endpoint
-            searchTerm || null
-          );
-        }
+        // Use the dedicated author books endpoint
+        const response = await bookApi.getBooksByAuthor(
+          authorId,
+          page,
+          size,
+          sortBy,
+          sortDir
+        );
         
         setBooks(response.content || []);
         setPageCount(response.totalPages || 0);
       } catch (err) {
-        console.error('Error fetching books:', err);
+        console.error('Error fetching author books:', err);
         setError('Failed to load books. Please try again later.');
       } finally {
         setLoading(false);
@@ -135,22 +111,17 @@ const BookListPage = () => {
     };
 
     fetchBooks();
-  }, [filters]);
+  }, [authorId, filters]);
 
-  // Handle filter changes
-  const handleFilterChange = (newFilters) => {
-    // If authorId is present in the URL, preserve it 
-    // unless explicitly changed in newFilters
-    const currentAuthorId = filters.authorId;
-    const updatedAuthorId = 
-      'authorId' in newFilters ? newFilters.authorId : currentAuthorId;
+  // Handle sorting change
+  const handleSortChange = (event) => {
+    const { name, value } = event.target;
     
-    // Reset to first page when filters change
+    // Update filters and reset to first page
     setFilters({
       ...filters,
-      ...newFilters,
-      page: 0,
-      authorId: updatedAuthorId
+      [name]: value,
+      page: 0
     });
     
     // Reset custom page input
@@ -198,46 +169,117 @@ const BookListPage = () => {
     window.scrollTo(0, 0);
   };
 
-  // This function is now handled by the "Back to Books" button on AuthorBooksPage
-  // Keeping it for backward compatibility
-  const handleClearAuthorFilter = () => {
-    // Navigate to books page without authorId parameter
-    navigate('/books');
+  // Get appropriate title based on loading state and author data
+  const getPageTitle = () => {
+    if (authorLoading) {
+      return 'Loading Author Details...';
+    }
+    
+    if (author) {
+      return `Books by ${author.name}`;
+    }
+    
+    return 'Author Books';
   };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
-        <LibraryBooksIcon sx={{ fontSize: 32, mr: 2, color: theme.palette.primary.main }} />
-        <Typography variant="h4" component="h1" color="text.primary" fontWeight="bold">
-          {authorName ? `Books by ${authorName}` : 'Book Collection'}
+      {/* Breadcrumbs navigation */}
+      <Breadcrumbs sx={{ mb: 4 }}>
+        <Link component={RouterLink} to="/" color="inherit">
+          Home
+        </Link>
+        <Link component={RouterLink} to="/books" color="inherit">
+          Books
+        </Link>
+        <Typography color="text.primary">
+          {getPageTitle()}
         </Typography>
+      </Breadcrumbs>
+      
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <PersonIcon sx={{ fontSize: 32, mr: 2, color: theme.palette.primary.main }} />
+          <Typography variant="h4" component="h1" color="text.primary" fontWeight="bold">
+            {getPageTitle()}
+          </Typography>
+        </Box>
+        
+        <Button
+          component={RouterLink}
+          to="/books"
+          startIcon={<ArrowBackIcon />}
+          variant="outlined"
+        >
+          All Books
+        </Button>
       </Box>
       
-      {/* Author filter notice */}
-      {authorName && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 3 }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={handleClearAuthorFilter}
-            >
-              Show All Books
-            </Button>
-          }
+      {/* Author biography */}
+      {author && author.biography && (
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: 3, 
+            mb: 4, 
+            borderRadius: theme.shape.borderRadius 
+          }}
         >
-          Currently showing books by: <strong>{authorName}</strong>
-        </Alert>
+          <Typography variant="h6" gutterBottom>About the Author</Typography>
+          <Typography variant="body1">{author.biography}</Typography>
+        </Paper>
       )}
       
-      {/* Filters */}
-      <BookFilters 
-        onFilterChange={handleFilterChange} 
-        initialFilters={filters}
-      />
+      {/* Sorting controls */}
+      <Paper 
+        elevation={1}
+        sx={{ 
+          p: 3, 
+          mb: 4, 
+          borderRadius: theme.shape.borderRadius 
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+            <LibraryBooksIcon sx={{ mr: 1 }} />
+            {loading ? 'Loading books...' : `${books.length > 0 ? books.length : 'No'} Books Found`}
+          </Typography>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <SortIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
+            <Typography variant="body2" sx={{ mr: 2 }}>Sort by:</Typography>
+            
+            {/* Sort By Field */}
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 150, mr: 2 }}>
+              <Select
+                id="sort-by"
+                name="sortBy"
+                value={filters.sortBy}
+                onChange={handleSortChange}
+                displayEmpty
+              >
+                <MenuItem value="publicationYear">Publication Year</MenuItem>
+                <MenuItem value="title">Title</MenuItem>
+                <MenuItem value="averageRating">Rating</MenuItem>
+              </Select>
+            </FormControl>
+            
+            {/* Sort Direction */}
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+              <Select
+                id="sort-direction"
+                name="sortDir"
+                value={filters.sortDir}
+                onChange={handleSortChange}
+                displayEmpty
+              >
+                <MenuItem value="asc">Ascending</MenuItem>
+                <MenuItem value="desc">Descending</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
+      </Paper>
       
       {/* Error message */}
       {error && (
@@ -256,7 +298,7 @@ const BookListPage = () => {
           {/* Book grid */}
           {books.length === 0 ? (
             <Alert severity="info" sx={{ mt: 4 }}>
-              No books found matching your criteria. Try adjusting your filters.
+              No books found for this author. The author may not have any books in the system yet.
             </Alert>
           ) : (
             <Fade in={!loading}>
@@ -352,4 +394,4 @@ const BookListPage = () => {
   );
 };
 
-export default BookListPage;
+export default AuthorBooksPage;

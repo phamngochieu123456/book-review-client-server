@@ -26,6 +26,7 @@ const BookFilters = ({ onFilterChange, initialFilters }) => {
     genreId: '', // Changed from categoryId to genreId
     sortBy: 'averageRating', // Changed default from 'createdAt' to 'averageRating'
     sortDir: 'desc',
+    // Note: authorId filtering is now handled by the dedicated AuthorBooksPage
     ...initialFilters
   });
   

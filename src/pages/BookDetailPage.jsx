@@ -210,7 +210,7 @@ const BookDetailPage = () => {
                   {index > 0 && ', '}
                   <Link
                     component={RouterLink}
-                    to={`/books?authorId=${author.id}`}
+                    to={`/authors/${author.id}/books`}
                     color="primary"
                     sx={{ textDecoration: 'none' }}
                   >
@@ -313,7 +313,7 @@ const BookDetailPage = () => {
                       <Typography variant="subtitle1" fontWeight="medium">
                         <Link
                           component={RouterLink}
-                          to={`/books?authorId=${author.id}`}
+                          to={`/authors/${author.id}/books`}
                           color="inherit"
                           sx={{ textDecoration: 'none' }}
                         >

@@ -1,6 +1,6 @@
 // src/components/book/BookCard.jsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { 
   Card, 
   CardMedia, 
@@ -9,7 +9,8 @@ import {
   Chip, 
   Box, 
   Rating,
-  CardActionArea
+  CardActionArea,
+  Link
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -46,7 +47,7 @@ const BookCard = ({ book }) => {
 
   return (
     <StyledCard>
-      <CardActionArea component={Link} to={`/books/${book.id}`}>
+      <CardActionArea component={RouterLink} to={`/books/${book.id}`}>
         <CardMediaStyled
           image={coverImage}
           title={book.title}
@@ -60,7 +61,25 @@ const BookCard = ({ book }) => {
           <Box sx={{ mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
               {book.authors && book.authors.length > 0 
-                ? book.authors.map(author => author.name).join(', ') 
+                ? book.authors.map((author, index) => (
+                    <React.Fragment key={author.id}>
+                      {index > 0 && ', '}
+                      <Link 
+                        component={RouterLink} 
+                        to={`/authors/${author.id}/books`}
+                        color="text.secondary"
+                        sx={{ 
+                          textDecoration: 'none',
+                          '&:hover': { 
+                            textDecoration: 'underline',
+                            color: 'primary.main'
+                          } 
+                        }}
+                      >
+                        {author.name}
+                      </Link>
+                    </React.Fragment>
+                  ))
                 : 'Unknown Author'}
             </Typography>
           </Box>
